@@ -6,8 +6,8 @@ import { ReactQueryProvider } from "@/components/providers/ReactQueryProvider";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Rising CRM- Professional CRM Platform",
-  description: "Modern Rising CRMfor managing leads, customers, deals, and more",
+  title: "Sales CRM- Professional CRM Platform",
+  description: "Modern Sales CRMfor managing leads, customers, deals, and more",
 };
 
 export default function RootLayout({
