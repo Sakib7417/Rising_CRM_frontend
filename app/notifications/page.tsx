@@ -24,7 +24,7 @@ export default function NotificationsPage() {
 
   const markAllReadMutation = useMutation({
     mutationFn: () => Promise.all(
-      notifications?.filter(n => !n.isRead).map(n => notificationService.markAsRead(n.id)) || []
+      notifications?.filter(n => !n.readAt).map(n => notificationService.markAsRead(n.id)) || []
     ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
@@ -38,7 +38,7 @@ export default function NotificationsPage() {
     TASK_ASSIGNED: Info,
   };
 
-  const unreadCount = notifications?.filter(n => !n.isRead).length || 0;
+  const unreadCount = notifications?.filter(n => !n.readAt).length || 0;
 
   return (
     <DashboardLayout>
@@ -73,19 +73,19 @@ export default function NotificationsPage() {
             </div>
           ) : (
             notifications?.map((notification: Notification) => {
-              const Icon = typeIcons[notification.type] || Bell;
+              const Icon = Bell;
               return (
                 <div
                   key={notification.id}
                   className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-4 transition-all hover:shadow-md ${
-                    !notification.isRead
+                    !notification.readAt
                       ? "border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20"
                       : "border-gray-200 dark:border-gray-700"
                   }`}
                 >
                   <div className="flex items-start space-x-4">
                     <div className={`h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      !notification.isRead
+                      !notification.readAt
                         ? "bg-blue-500"
                         : "bg-gray-200 dark:bg-gray-700"
                     }`}>
@@ -95,13 +95,16 @@ export default function NotificationsPage() {
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {notification.message}
+                            {notification.title}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {notification.body}
+                          </p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                             {formatDate(notification.createdAt)}
                           </p>
                         </div>
-                        {!notification.isRead && (
+                        {!notification.readAt && (
                           <button
                             onClick={() => markReadMutation.mutate(notification.id)}
                             className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"

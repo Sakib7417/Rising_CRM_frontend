@@ -40,11 +40,11 @@ export default function EmployeesPage() {
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
             <p className="text-sm text-gray-600 dark:text-gray-400">Managers</p>
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">{users?.filter(u => u.role === 'MANAGER').length || 0}</p>
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">{users?.filter(u => u.role === 'SALES_MANAGER').length || 0}</p>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
             <p className="text-sm text-gray-600 dark:text-gray-400">Sales Reps</p>
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">{users?.filter(u => u.role === 'SALES_REP').length || 0}</p>
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">{users?.filter(u => u.role === 'SALES_AGENT').length || 0}</p>
           </div>
         </div>
 

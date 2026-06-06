@@ -13,8 +13,12 @@ export default function FollowupsPage() {
   const [filter, setFilter] = useState<"all" | "today" | "upcoming" | "missed">("all");
 
   const { data: followups, isLoading } = useQuery<Followup[]>({
-    queryKey: ["followups"],
-    queryFn: () => followupService.getFollowups(),
+    queryKey: ["followups", filter],
+    queryFn: () => {
+      if (filter === "missed") return followupService.getMissedFollowups();
+      if (filter === "upcoming") return followupService.getUpcomingFollowups();
+      return followupService.getDailyFollowups();
+    },
   });
 
   const completeMutation = useMutation({
@@ -26,11 +30,11 @@ export default function FollowupsPage() {
 
   const todayFollowups = followups?.filter((f) => {
     const today = new Date().toDateString();
-    return new Date(f.scheduledAt).toDateString() === today;
+    return new Date(f.followupDate).toDateString() === today;
   }) || [];
 
-  const upcomingFollowups = followups?.filter((f) => new Date(f.scheduledAt) > new Date()) || [];
-  const missedFollowups = followups?.filter((f) => f.status !== "COMPLETED" && new Date(f.scheduledAt) < new Date()) || [];
+  const upcomingFollowups = followups?.filter((f) => new Date(f.followupDate) > new Date()) || [];
+  const missedFollowups = followups?.filter((f) => f.followupStatus !== "COMPLETED" && new Date(f.followupDate) < new Date()) || [];
 
   const displayFollowups = filter === "all" ? followups :
     filter === "today" ? todayFollowups :
@@ -40,7 +44,10 @@ export default function FollowupsPage() {
   const statusColors: Record<string, string> = {
     PENDING: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
     COMPLETED: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-    MISSED: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+    NO_RESPONSE: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+    INTERESTED: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+    CALLBACK: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
+    CLOSED: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
   };
 
   return (
@@ -114,24 +121,24 @@ export default function FollowupsPage() {
                             <Calendar className="h-5 w-5 text-white" />
                           </div>
                           <div className="ml-3">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">{followup.lead?.name || followup.customer?.name}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{followup.lead?.company || followup.customer?.companyName}</p>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">{followup.lead?.name || "N/A"}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{followup.lead?.companyName || "N/A"}</p>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                           <Phone className="h-4 w-4 mr-2" />
-                          {followup.type}
+                          {followup.remarks || "No remarks"}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{formatDate(followup.scheduledAt)}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{formatDate(followup.followupDate)}</td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[followup.status] || statusColors.PENDING}`}>
-                          {followup.status}
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[followup.followupStatus] || statusColors.PENDING}`}>
+                          {followup.followupStatus}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 max-w-xs truncate">{followup.notes || "-"}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 max-w-xs truncate">{followup.remarks || "-"}</td>
                     </tr>
                   ))
                 )}
