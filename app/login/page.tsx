@@ -37,11 +37,21 @@ export default function LoginPage() {
 
     try {
       const response = await authService.login(data.email, data.password);
+      
+      // Store auth data in Zustand and localStorage
       setAuth(response.user, response.accessToken, response.refreshToken);
-      router.push("/dashboard");
+      
+      // Ensure localStorage is synced
+      localStorage.setItem("accessToken", response.accessToken);
+      localStorage.setItem("refreshToken", response.refreshToken);
+      
+      // Set cookie for middleware auth check
+      document.cookie = `auth-storage=${encodeURIComponent(JSON.stringify({ state: { isAuthenticated: true } }))}; path=/; max-age=${60 * 60 * 24 * 7}`;
+      
+      // Redirect to dashboard
+      window.location.href = "/dashboard";
     } catch (err: any) {
-      setError(err.response?.data?.error || "Login failed. Please try again.");
-    } finally {
+      setError(err.response?.data?.error || err.response?.data?.message || "Login failed. Please try again.");
       setIsLoading(false);
     }
   };

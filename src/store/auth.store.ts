@@ -30,6 +30,8 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
+        // Clear auth cookie
+        document.cookie = "auth-storage=; path=/; max-age=0";
         set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
       },
 
