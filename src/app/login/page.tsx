@@ -152,11 +152,11 @@ export default function LoginPage() {
           {/* Demo Credentials */}
           <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
             <p className="text-xs text-gray-600 dark:text-gray-400 text-center">
-              <strong>Demo Credentials:</strong>
+              {/* <strong>Demo Credentials:</strong>
               <br />
               Email: admin@salescrm.com
               <br />
-              Password: Admin@12345
+              Password: Admin@12345 */}
             </p>
           </div>
         </form>
