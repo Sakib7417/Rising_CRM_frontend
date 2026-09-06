@@ -1,6 +1,8 @@
 import api from "@/lib/axios";
 import type { AuthResponse, User } from "@/types";
 
+const isBrowser = typeof window !== "undefined";
+
 export const authService = {
   login: async (email: string, password: string): Promise<AuthResponse> => {
     const response = await api.post("/auth/login", { email, password });
@@ -37,7 +39,9 @@ export const authService = {
 
   logout: async (refreshToken: string) => {
     await api.post("/auth/logout", { refreshToken });
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
+    if (isBrowser) {
+      window.localStorage.removeItem("accessToken");
+      window.localStorage.removeItem("refreshToken");
+    }
   },
 };

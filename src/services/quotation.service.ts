@@ -7,8 +7,18 @@ export const quotationService = {
     return response.data.data;
   },
 
+  getQuotation: async (id: string): Promise<Quotation> => {
+    const response = await api.get(`/quotations/${id}`);
+    return response.data.data;
+  },
+
   createQuotation: async (data: Partial<Quotation>): Promise<Quotation> => {
     const response = await api.post("/quotations", data);
+    return response.data.data;
+  },
+
+  updateQuotation: async (id: string, data: Partial<Quotation>): Promise<Quotation> => {
+    const response = await api.patch(`/quotations/${id}`, data);
     return response.data.data;
   },
 

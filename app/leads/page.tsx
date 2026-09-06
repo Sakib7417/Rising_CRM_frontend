@@ -9,6 +9,7 @@ import {
   Plus,
   Filter,
   Download,
+  Upload,
   Eye,
   Edit,
   Trash2,
@@ -41,10 +42,11 @@ export default function LeadsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [showModal, setShowModal] = useState(false);
-  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showIndiaMartModal, setShowIndiaMartModal] = useState(false);
+  const [showCsvModal, setShowCsvModal] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [indiaMartText, setIndiaMartText] = useState("");
@@ -198,6 +200,11 @@ export default function LeadsPage() {
     createMutation.mutate(formData);
   };
 
+  const handleView = (lead: Lead) => {
+    setSelectedLead(lead);
+    setShowViewModal(true);
+  };
+
   const handleEdit = (lead: Lead) => {
     setSelectedLead(lead);
     setEditData({
@@ -289,9 +296,13 @@ export default function LeadsPage() {
             </p>
           </div>
           <div className="flex items-center space-x-3">
-            <button className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2">
+            <button onClick={() => setShowIndiaMartModal(true)} className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2">
               <Download className="h-4 w-4" />
-              <span>Export</span>
+              <span>Import IndiaMART</span>
+            </button>
+            <button onClick={() => setShowCsvModal(true)} className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2">
+              <Upload className="h-4 w-4" />
+              <span>Import CSV</span>
             </button>
             <button
               onClick={() => setShowModal(true)}
@@ -445,13 +456,13 @@ export default function LeadsPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-2">
-                          <button className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors">
+                          <button onClick={() => handleView(lead)} className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors">
                             <Eye className="h-4 w-4" />
                           </button>
-                          <button className="p-2 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors">
+                          <button onClick={() => handleEdit(lead)} className="p-2 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors">
                             <Edit className="h-4 w-4" />
                           </button>
-                          <button className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                          <button onClick={() => handleDelete(lead.id)} className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
@@ -605,6 +616,8 @@ export default function LeadsPage() {
           setShowEditModal={setShowEditModal}
           showAssignModal={showAssignModal}
           setShowAssignModal={setShowAssignModal}
+          showViewModal={showViewModal}
+          setShowViewModal={setShowViewModal}
           showIndiaMartModal={showIndiaMartModal}
           setShowIndiaMartModal={setShowIndiaMartModal}
           selectedLead={selectedLead}
@@ -630,6 +643,38 @@ export default function LeadsPage() {
           toggleMutation={toggleMutation}
           users={[]}
         />
+
+        {/* CSV Import Modal */}
+        {showCsvModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Import Leads from CSV</h2>
+                <button onClick={() => { setShowCsvModal(false); setCsvFile(null); }} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select CSV File</label>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+                {csvFile && <p className="text-sm text-gray-600 dark:text-gray-400">Selected: {csvFile.name}</p>}
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button onClick={() => { setShowCsvModal(false); setCsvFile(null); }} className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300">Cancel</button>
+                  <button onClick={handleCSVImport} disabled={!csvFile || bulkImportMutation.isPending} className="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg disabled:opacity-50">
+                    {bulkImportMutation.isPending ? "Importing..." : "Import"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

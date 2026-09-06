@@ -37,7 +37,7 @@ export const leadService = {
   },
 
   updateLead: async (id: string, data: Partial<Lead>): Promise<Lead> => {
-    const response = await api.put(`/leads/${id}`, data);
+    const response = await api.patch(`/leads/${id}`, data);
     return response.data.data;
   },
 

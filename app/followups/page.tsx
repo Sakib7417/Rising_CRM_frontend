@@ -1,53 +1,42 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { followupService } from "@/services/followup.service";
-import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Calendar, Clock, Phone, CheckCircle, AlertCircle } from "lucide-react";
+import { leadService } from "@/services/lead.service";
 import { formatDate } from "@/lib/utils";
+import DashboardLayout from "@/components/layout/DashboardLayout";
 import type { Followup } from "@/types";
-import { useState } from "react";
+
+const statusColors: Record<string, string> = {
+  PENDING: "bg-yellow-100 text-yellow-800",
+  COMPLETED: "bg-green-100 text-green-800",
+  NO_RESPONSE: "bg-gray-100 text-gray-800",
+  INTERESTED: "bg-blue-100 text-blue-800",
+  CALLBACK: "bg-orange-100 text-orange-800",
+  CLOSED: "bg-red-100 text-red-800",
+};
 
 export default function FollowupsPage() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [filter, setFilter] = useState<"daily" | "missed" | "upcoming" | "all">("all");
+  const [form, setForm] = useState<Partial<Followup>>({ leadId: "", followupDate: "", followupType: "PHONE_CALL", remarks: "", nextFollowupDate: "", followupStatus: "PENDING" });
   const queryClient = useQueryClient();
-  const [filter, setFilter] = useState<"all" | "today" | "upcoming" | "missed">("all");
 
-  const { data: followups, isLoading } = useQuery<Followup[]>({
+  const { data: followups, isLoading } = useQuery({
     queryKey: ["followups", filter],
-    queryFn: () => {
-      if (filter === "missed") return followupService.getMissedFollowups();
-      if (filter === "upcoming") return followupService.getUpcomingFollowups();
-      return followupService.getDailyFollowups();
-    },
+    queryFn: () => followupService.getFollowups(filter === "daily" ? { type: "daily" } : filter === "missed" ? { type: "missed" } : filter === "upcoming" ? { type: "upcoming" } : {}),
+  });
+  const { data: leads } = useQuery({ queryKey: ["leads"], queryFn: () => leadService.getLeads({}) });
+
+  const create = useMutation({
+    mutationFn: followupService.createFollowup,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["followups"] }); setIsOpen(false); setForm({ leadId: "", followupDate: "", followupType: "PHONE_CALL", remarks: "", nextFollowupDate: "", followupStatus: "PENDING" }); },
   });
 
-  const completeMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => followupService.updateFollowup(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["followups"] });
-    },
-  });
-
-  const todayFollowups = followups?.filter((f) => {
-    const today = new Date().toDateString();
-    return new Date(f.followupDate).toDateString() === today;
-  }) || [];
-
-  const upcomingFollowups = followups?.filter((f) => new Date(f.followupDate) > new Date()) || [];
-  const missedFollowups = followups?.filter((f) => f.followupStatus !== "COMPLETED" && new Date(f.followupDate) < new Date()) || [];
-
-  const displayFollowups = filter === "all" ? followups :
-    filter === "today" ? todayFollowups :
-    filter === "upcoming" ? upcomingFollowups :
-    missedFollowups;
-
-  const statusColors: Record<string, string> = {
-    PENDING: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-    COMPLETED: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-    NO_RESPONSE: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-    INTERESTED: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-    CALLBACK: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
-    CLOSED: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    create.mutate(form);
   };
 
   return (
@@ -55,97 +44,74 @@ export default function FollowupsPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Followups</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">Manage your scheduled followups</p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Follow-ups</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">Track and schedule lead follow-ups</p>
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Total</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{followups?.length || 0}</p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Today</p>
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">{todayFollowups.length}</p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Upcoming</p>
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">{upcomingFollowups.length}</p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Missed</p>
-            <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">{missedFollowups.length}</p>
-          </div>
+          <button onClick={() => setIsOpen(true)} className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-blue-600 hover:to-purple-700">Add Follow-up</button>
         </div>
 
         <div className="flex space-x-2">
-          {(["all", "today", "upcoming", "missed"] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                filter === f
-                  ? "bg-blue-500 text-white"
-                  : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600"
-              }`}
-            >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-            </button>
+          {(["all", "daily", "missed", "upcoming"] as const).map((f) => (
+            <button key={f} onClick={() => setFilter(f)} className={`px-4 py-2 rounded-lg text-sm capitalize ${filter === f ? "bg-blue-600 text-white" : "bg-white dark:bg-gray-800 border text-gray-700 dark:text-gray-300"}`}>{f}</button>
           ))}
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-700/50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Lead/Customer</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Scheduled</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Notes</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {isLoading ? (
-                  <tr><td colSpan={5} className="px-6 py-12 text-center"><div className="flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div></div></td></tr>
-                ) : displayFollowups?.length === 0 ? (
-                  <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">No followups found</td></tr>
-                ) : (
-                  displayFollowups?.map((followup: Followup) => (
-                    <tr key={followup.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center">
-                          <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center">
-                            <Calendar className="h-5 w-5 text-white" />
-                          </div>
-                          <div className="ml-3">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">{followup.lead?.name || "N/A"}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{followup.lead?.companyName || "N/A"}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                          <Phone className="h-4 w-4 mr-2" />
-                          {followup.remarks || "No remarks"}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{formatDate(followup.followupDate)}</td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[followup.followupStatus] || statusColors.PENDING}`}>
-                          {followup.followupStatus}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 max-w-xs truncate">{followup.remarks || "-"}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <table className="w-full">
+            <thead className="bg-gray-50 dark:bg-gray-700/50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lead</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Next Follow-up</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Remarks</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              {isLoading ? (
+                <tr><td colSpan={6} className="px-6 py-12 text-center">Loading...</td></tr>
+              ) : followups?.length === 0 ? (
+                <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500">No follow-ups found</td></tr>
+              ) : (
+                followups?.map((f) => (
+                  <tr key={f.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{f.lead?.name}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{formatDate(f.followupDate)}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{f.followupType}</td>
+                    <td className="px-6 py-4"><span className={`px-2 py-1 rounded-full text-xs ${statusColors[f.followupStatus] || ""}`}>{f.followupStatus}</span></td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{formatDate(f.nextFollowupDate)}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{f.remarks || "-"}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
+
+        {isOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md">
+              <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Add Follow-up</h2>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <select value={form.leadId || ""} onChange={(e) => setForm({ ...form, leadId: e.target.value })} className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:text-white" required>
+                  <option value="">Select Lead</option>
+                  {leads?.data.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                </select>
+                <input type="datetime-local" value={form.followupDate || ""} onChange={(e) => setForm({ ...form, followupDate: e.target.value })} className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:text-white" required />
+                <select value={form.followupType} onChange={(e) => setForm({ ...form, followupType: e.target.value as Followup["followupType"] })} className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:text-white">
+                  <option value="PHONE_CALL">Phone Call</option><option value="WHATSAPP">WhatsApp</option><option value="EMAIL">Email</option><option value="MEETING">Meeting</option><option value="SITE_VISIT">Site Visit</option>
+                </select>
+                <textarea value={form.remarks || ""} onChange={(e) => setForm({ ...form, remarks: e.target.value })} placeholder="Remarks" className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:text-white" />
+                <input type="datetime-local" value={form.nextFollowupDate || ""} onChange={(e) => setForm({ ...form, nextFollowupDate: e.target.value })} className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:text-white" />
+                <div className="flex justify-end space-x-2">
+                  <button type="button" onClick={() => setIsOpen(false)} className="px-4 py-2 border rounded-lg">Cancel</button>
+                  <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg">Create</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

@@ -18,6 +18,8 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  Package,
+  Receipt,
 } from "lucide-react";
 
 const menuItems = [
@@ -26,6 +28,8 @@ const menuItems = [
   { name: "Customers", href: "/customers", icon: UserCheck },
   { name: "Deals", href: "/deals", icon: Target },
   { name: "Quotations", href: "/quotations", icon: FileText },
+  { name: "Invoices", href: "/invoices", icon: Receipt },
+  { name: "Products", href: "/products", icon: Package },
   { name: "Followups", href: "/followups", icon: CalendarCheck },
   { name: "Tasks", href: "/tasks", icon: CheckSquare },
   { name: "Reports", href: "/reports", icon: BarChart3 },

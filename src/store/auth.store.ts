@@ -1,6 +1,9 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
 import type { User } from "@/types";
+
+const isBrowser = typeof window !== "undefined";
+const storage = isBrowser ? createJSONStorage(() => window.localStorage) : undefined;
 
 interface AuthState {
   user: User | null;
@@ -22,16 +25,20 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
 
       setAuth: (user, accessToken, refreshToken) => {
-        localStorage.setItem("accessToken", accessToken);
-        localStorage.setItem("refreshToken", refreshToken);
+        if (isBrowser) {
+          window.localStorage.setItem("accessToken", accessToken);
+          window.localStorage.setItem("refreshToken", refreshToken);
+        }
         set({ user, accessToken, refreshToken, isAuthenticated: true });
       },
 
       logout: () => {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        // Clear auth cookie
-        document.cookie = "auth-storage=; path=/; max-age=0";
+        if (isBrowser) {
+          window.localStorage.removeItem("accessToken");
+          window.localStorage.removeItem("refreshToken");
+          // Clear auth cookie
+          document.cookie = "auth-storage=; path=/; max-age=0";
+        }
         set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
       },
 
@@ -42,6 +49,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "auth-storage",
+      storage,
       partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,

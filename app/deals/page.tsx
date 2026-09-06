@@ -1,71 +1,48 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { dealService } from "@/services/deal.service";
+import { customerService } from "@/services/customer.service";
+import { userService } from "@/services/user.service";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Target, DollarSign, Plus, X } from "lucide-react";
-import { formatDate, formatCurrency } from "@/lib/utils";
 import type { Deal } from "@/types";
-import { useState } from "react";
 
 const stageColors: Record<string, string> = {
-  NEW: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-  DISCUSSION: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
-  PROPOSAL_SENT: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-  NEGOTIATION: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
-  WON: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-  LOST: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+  NEW: "bg-gray-100 text-gray-800",
+  DISCUSSION: "bg-blue-100 text-blue-800",
+  PROPOSAL_SENT: "bg-yellow-100 text-yellow-800",
+  NEGOTIATION: "bg-orange-100 text-orange-800",
+  WON: "bg-green-100 text-green-800",
+  LOST: "bg-red-100 text-red-800",
 };
 
 export default function DealsPage() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [editing, setEditing] = useState<Deal | null>(null);
+  const [form, setForm] = useState<Partial<Deal>>({ title: "", amount: 0, stage: "NEW", expectedCloseDate: "", assignedToId: "", customerId: "", notes: "" });
   const queryClient = useQueryClient();
-  const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({
-    title: "",
-    amount: "",
-    stage: "QUALIFIED",
-    customerId: "",
-    leadId: "",
-    notes: "",
-    expectedCloseDate: "",
+
+  const { data: deals, isLoading } = useQuery({ queryKey: ["deals"], queryFn: () => dealService.getDeals() });
+  const { data: customers } = useQuery({ queryKey: ["customers"], queryFn: () => customerService.getCustomers() });
+  const { data: users } = useQuery({ queryKey: ["users"], queryFn: () => userService.getUsers() });
+
+  const create = useMutation({
+    mutationFn: dealService.createDeal,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["deals"] }); setIsOpen(false); setForm({ title: "", amount: 0, stage: "NEW", expectedCloseDate: "", assignedToId: "", customerId: "", notes: "" }); },
   });
 
-  const { data: deals, isLoading } = useQuery<Deal[]>({
-    queryKey: ["deals"],
-    queryFn: () => dealService.getDeals(),
-  });
-
-  const createMutation = useMutation({
-    mutationFn: (data: any) => dealService.createDeal(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["deals"] });
-      setShowModal(false);
-      setFormData({
-        title: "",
-        amount: "",
-        stage: "QUALIFIED",
-        customerId: "",
-        leadId: "",
-        notes: "",
-        expectedCloseDate: "",
-      });
-      alert("Deal created successfully!");
-    },
-    onError: (error: any) => {
-      alert(error?.response?.data?.message || "Failed to create deal");
-    },
+  const update = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Deal> }) => dealService.updateDeal(id, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["deals"] }); setIsOpen(false); setEditing(null); },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createMutation.mutate({
-      ...formData,
-      amount: parseFloat(formData.amount) || 0,
-    });
+    if (editing) update.mutate({ id: editing.id, data: form });
+    else create.mutate(form);
   };
-
-  const totalValue = deals?.reduce((sum, deal) => sum + Number(deal.amount), 0) || 0;
-  const wonDeals = deals?.filter((d) => d.stage === "WON").length || 0;
 
   return (
     <DashboardLayout>
@@ -73,75 +50,79 @@ export default function DealsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Deals</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">Track and manage your sales pipeline</p>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">Sales pipeline and opportunities</p>
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Total Deals</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{deals?.length || 0}</p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Total Value</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{formatCurrency(totalValue)}</p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Won Deals</p>
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">{wonDeals}</p>
-          </div>
+          <button onClick={() => { setEditing(null); setForm({ title: "", amount: 0, stage: "NEW", expectedCloseDate: "", assignedToId: "", customerId: "", notes: "" }); setIsOpen(true); }} className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-blue-600 hover:to-purple-700">Add Deal</button>
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-700/50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Deal Title</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Stage</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Expected Close</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Created</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {isLoading ? (
-                  <tr><td colSpan={5} className="px-6 py-12 text-center"><div className="flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div></div></td></tr>
-                ) : deals?.length === 0 ? (
-                  <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">No deals found</td></tr>
-                ) : (
-                  deals?.map((deal: Deal) => (
-                    <tr key={deal.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center">
-                          <div className="h-10 w-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center">
-                            <Target className="h-5 w-5 text-white" />
-                          </div>
-                          <div className="ml-3">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">{deal.title}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center text-sm font-semibold text-gray-900 dark:text-white">
-                          <DollarSign className="h-4 w-4 mr-1 text-green-600" />
-                          {formatCurrency(Number(deal.amount))}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${stageColors[deal.stage] || stageColors.NEW}`}>
-                          {deal.stage}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{deal.expectedCloseDate ? formatDate(deal.expectedCloseDate) : "-"}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{formatDate(deal.createdAt)}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <table className="w-full">
+            <thead className="bg-gray-50 dark:bg-gray-700/50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Deal</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stage</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Expected Close</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              {isLoading ? (
+                <tr><td colSpan={7} className="px-6 py-12 text-center">Loading...</td></tr>
+              ) : deals?.length === 0 ? (
+                <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-500">No deals found</td></tr>
+              ) : (
+                deals?.map((d) => (
+                  <tr key={d.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td className="px-6 py-4">
+                      <p className="font-medium text-gray-900 dark:text-white">{d.title}</p>
+                      <p className="text-sm text-gray-500">{d.notes || "-"}</p>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{d.customer?.name || "-"}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{formatCurrency(d.amount)}</td>
+                    <td className="px-6 py-4"><span className={`px-2 py-1 rounded-full text-xs ${stageColors[d.stage] || ""}`}>{d.stage}</span></td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{d.assignedTo?.name || "-"}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{formatDate(d.expectedCloseDate)}</td>
+                    <td className="px-6 py-4">
+                      <button onClick={() => { setEditing(d); setForm({ ...d }); setIsOpen(true); }} className="text-blue-600 hover:underline text-sm">Edit</button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
+
+        {isOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md">
+              <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">{editing ? "Edit Deal" : "Add Deal"}</h2>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <input value={form.title || ""} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Deal Title" className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:text-white" required />
+                <select value={form.customerId || ""} onChange={(e) => setForm({ ...form, customerId: e.target.value })} className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:text-white" required>
+                  <option value="">Select Customer</option>
+                  {customers?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <input type="number" value={form.amount || 0} onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })} placeholder="Amount" className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:text-white" required />
+                <select value={form.stage} onChange={(e) => setForm({ ...form, stage: e.target.value as Deal["stage"] })} className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:text-white">
+                  <option value="NEW">New</option><option value="DISCUSSION">Discussion</option><option value="PROPOSAL_SENT">Proposal Sent</option><option value="NEGOTIATION">Negotiation</option><option value="WON">Won</option><option value="LOST">Lost</option>
+                </select>
+                <select value={form.assignedToId || ""} onChange={(e) => setForm({ ...form, assignedToId: e.target.value })} className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:text-white">
+                  <option value="">Unassigned</option>
+                  {users?.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                </select>
+                <input type="date" value={form.expectedCloseDate ? form.expectedCloseDate.split("T")[0] : ""} onChange={(e) => setForm({ ...form, expectedCloseDate: e.target.value })} className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:text-white" />
+                <textarea value={form.notes || ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Notes" className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:text-white" />
+                <div className="flex justify-end space-x-2">
+                  <button type="button" onClick={() => setIsOpen(false)} className="px-4 py-2 border rounded-lg">Cancel</button>
+                  <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg">{editing ? "Update" : "Create"}</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

@@ -11,3 +11,5 @@ export { notificationService } from "./notification.service";
 export { activityService } from "./activity.service";
 export { reportService } from "./report.service";
 export { noteService } from "./note.service";
+export { productService } from "./product.service";
+export { invoiceService } from "./invoice.service";

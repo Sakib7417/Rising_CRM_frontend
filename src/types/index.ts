@@ -64,6 +64,7 @@ export interface Followup {
   leadId: string;
   lead?: Lead;
   followupDate: string;
+  followupType: FollowupType;
   remarks: string | null;
   nextFollowupDate: string | null;
   followupStatus: FollowupStatus;
@@ -73,6 +74,7 @@ export interface Followup {
 }
 
 export type FollowupStatus = "PENDING" | "COMPLETED" | "NO_RESPONSE" | "INTERESTED" | "CALLBACK" | "CLOSED";
+export type FollowupType = "PHONE_CALL" | "WHATSAPP" | "EMAIL" | "MEETING" | "SITE_VISIT";
 
 export interface Customer {
   id: string;
@@ -108,6 +110,19 @@ export interface Deal {
 
 export type DealStage = "NEW" | "DISCUSSION" | "PROPOSAL_SENT" | "NEGOTIATION" | "WON" | "LOST";
 
+export interface QuotationLineItem {
+  id: string;
+  quotationId: string;
+  productId: string | null;
+  product?: ProductService;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+  taxPercent: number;
+  total: number;
+}
+
 export interface Quotation {
   id: string;
   customerId: string | null;
@@ -115,18 +130,70 @@ export interface Quotation {
   leadId: string | null;
   lead?: Lead;
   quotationNumber: string;
-  serviceName: string;
+  serviceName: string | null;
   amount: number;
   tax: number;
   discount: number;
   totalAmount: number;
   status: QuotationStatus;
   pdfUrl: string | null;
+  lineItems: QuotationLineItem[];
+  invoices: Invoice[];
   createdAt: string;
   updatedAt: string;
 }
 
 export type QuotationStatus = "DRAFT" | "SENT" | "ACCEPTED" | "REJECTED" | "EXPIRED";
+
+export interface ProductService {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  taxPercent: number;
+  unit: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Payment {
+  id: string;
+  invoiceId: string;
+  amount: number;
+  paymentDate: string;
+  paymentMethod: string | null;
+  transactionId: string | null;
+  notes: string | null;
+  createdBy?: User;
+  createdAt: string;
+}
+
+export interface Invoice {
+  id: string;
+  invoiceNumber: string;
+  customerId: string;
+  customer?: Customer;
+  leadId: string | null;
+  lead?: Lead;
+  dealId: string | null;
+  deal?: Deal;
+  quotationId: string | null;
+  quotation?: Quotation;
+  amount: number;
+  tax: number;
+  discount: number;
+  totalAmount: number;
+  status: InvoiceStatus;
+  dueDate: string | null;
+  paidAt: string | null;
+  notes: string | null;
+  payments: Payment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type InvoiceStatus = "DRAFT" | "SENT" | "UNPAID" | "PARTIALLY_PAID" | "PAID" | "OVERDUE" | "CANCELLED";
 
 export interface Task {
   id: string;

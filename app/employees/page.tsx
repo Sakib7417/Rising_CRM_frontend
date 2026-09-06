@@ -1,22 +1,47 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { userService } from "@/services/user.service";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Users, Mail, Shield, Activity } from "lucide-react";
-import { formatDate } from "@/lib/utils";
 import type { User } from "@/types";
 
+const roleColors: Record<string, string> = {
+  SUPER_ADMIN: "bg-red-100 text-red-800",
+  ADMIN: "bg-purple-100 text-purple-800",
+  SALES_MANAGER: "bg-blue-100 text-blue-800",
+  SALES_AGENT: "bg-green-100 text-green-800",
+  EMPLOYEE: "bg-gray-100 text-gray-800",
+};
+
 export default function EmployeesPage() {
-  const { data: users, isLoading } = useQuery<User[]>({
-    queryKey: ["users"],
-    queryFn: () => userService.getUsers(),
+  const [isOpen, setIsOpen] = useState(false);
+  const [editing, setEditing] = useState<User | null>(null);
+  const [form, setForm] = useState<Partial<User>>({ name: "", email: "", phone: "", role: "EMPLOYEE", targetAmount: 0, isActive: true });
+  const queryClient = useQueryClient();
+
+  const { data: users, isLoading } = useQuery({ queryKey: ["users"], queryFn: () => userService.getUsers() });
+
+  const create = useMutation({
+    mutationFn: userService.createUser,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["users"] }); setIsOpen(false); setForm({ name: "", email: "", phone: "", role: "EMPLOYEE", targetAmount: 0, isActive: true }); },
   });
 
-  const roleColors: Record<string, string> = {
-    ADMIN: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-    MANAGER: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-    SALES_REP: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+  const update = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<User> }) => userService.updateUser(id, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["users"] }); setIsOpen(false); setEditing(null); },
+  });
+
+  const remove = useMutation({
+    mutationFn: userService.deleteUser,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] }),
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editing) update.mutate({ id: editing.id, data: form });
+    else create.mutate(form);
   };
 
   return (
@@ -25,80 +50,70 @@ export default function EmployeesPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Employees</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">Manage your team members</p>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">Manage staff and sales team</p>
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Total Employees</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{users?.length || 0}</p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Admins</p>
-            <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">{users?.filter(u => u.role === 'ADMIN').length || 0}</p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Managers</p>
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">{users?.filter(u => u.role === 'SALES_MANAGER').length || 0}</p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Sales Reps</p>
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">{users?.filter(u => u.role === 'SALES_AGENT').length || 0}</p>
-          </div>
+          <button onClick={() => { setEditing(null); setForm({ name: "", email: "", phone: "", role: "EMPLOYEE", targetAmount: 0, isActive: true }); setIsOpen(true); }} className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-blue-600 hover:to-purple-700">Add Employee</button>
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-700/50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Employee</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Role</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Leads</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Joined</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {isLoading ? (
-                  <tr><td colSpan={5} className="px-6 py-12 text-center"><div className="flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div></div></td></tr>
-                ) : users?.length === 0 ? (
-                  <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">No employees found</td></tr>
-                ) : (
-                  users?.map((user: User) => (
-                    <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center">
-                          <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                            <span className="text-white font-semibold text-sm">{user.name.charAt(0).toUpperCase()}</span>
-                          </div>
-                          <div className="ml-3">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">{user.name}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{user.phone || "No phone"}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                          <Mail className="h-4 w-4 mr-2" />
-                          {user.email}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleColors[user.role] || roleColors.SALES_REP}`}>
-                          {user.role}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{(user as any).leadCount || 0}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{formatDate(user.createdAt)}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <table className="w-full">
+            <thead className="bg-gray-50 dark:bg-gray-700/50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Target</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Achieved</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Joined</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              {isLoading ? (
+                <tr><td colSpan={7} className="px-6 py-12 text-center">Loading...</td></tr>
+              ) : users?.length === 0 ? (
+                <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-500">No employees found</td></tr>
+              ) : (
+                users?.map((u) => (
+                  <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{u.name}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{u.email}</td>
+                    <td className="px-6 py-4"><span className={`px-2 py-1 rounded-full text-xs ${roleColors[u.role] || ""}`}>{u.role}</span></td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{formatCurrency(u.targetAmount || 0)}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{formatCurrency(u.achievedAmount || 0)}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{formatDate(u.createdAt)}</td>
+                    <td className="px-6 py-4 space-x-2">
+                      <button onClick={() => { setEditing(u); setForm({ ...u }); setIsOpen(true); }} className="text-blue-600 hover:underline text-sm">Edit</button>
+                      <button onClick={() => remove.mutate(u.id)} className="text-red-600 hover:underline text-sm">Delete</button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
+
+        {isOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md">
+              <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">{editing ? "Edit Employee" : "Add Employee"}</h2>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <input value={form.name || ""} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Name" className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:text-white" required />
+                <input type="email" value={form.email || ""} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Email" className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:text-white" required />
+                <input value={form.phone || ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Phone" className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:text-white" />
+                <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as User["role"] })} className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:text-white">
+                  <option value="EMPLOYEE">Employee</option><option value="SALES_AGENT">Sales Agent</option><option value="SALES_MANAGER">Sales Manager</option><option value="ADMIN">Admin</option><option value="SUPER_ADMIN">Super Admin</option>
+                </select>
+                <input type="number" value={form.targetAmount || 0} onChange={(e) => setForm({ ...form, targetAmount: Number(e.target.value) })} placeholder="Monthly Target" className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:text-white" />
+                <label className="flex items-center space-x-2 text-gray-900 dark:text-white"><input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} /><span>Active</span></label>
+                <div className="flex justify-end space-x-2">
+                  <button type="button" onClick={() => setIsOpen(false)} className="px-4 py-2 border rounded-lg">Cancel</button>
+                  <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg">{editing ? "Update" : "Create"}</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );
