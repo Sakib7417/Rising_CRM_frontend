@@ -260,6 +260,8 @@ export interface DashboardStats {
   lostDeals: number;
   monthlyRevenue: number;
   conversionRate: number;
+  recentActivities: ActivityLog[];
+  upcomingFollowups: Followup[];
 }
 
 export interface PaginatedResponse<T> {

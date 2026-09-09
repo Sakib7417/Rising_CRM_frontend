@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { dashboardService } from "@/services/dashboard.service";
+import { formatDateTime } from "@/lib/utils";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import type { Followup } from "@/types";
 import {
   Users,
   UserCheck,
@@ -41,6 +44,8 @@ export default function DashboardPage() {
     queryKey: ["dashboard-analytics"],
     queryFn: dashboardService.getAnalytics,
   });
+
+  const [selectedFollowup, setSelectedFollowup] = useState<Followup | null>(null);
 
   // Sample data for charts (replace with real data from API)
   const revenueData = [
@@ -214,17 +219,17 @@ export default function DashboardPage() {
               Recent Activity
             </h3>
             <div className="space-y-4">
-              {[1, 2, 3, 4, 5].map((_, i) => (
-                <div key={i} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50">
+              {stats?.recentActivities?.slice(0, 5).map((activity) => (
+                <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50">
                   <div className="h-8 w-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center flex-shrink-0">
                     <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div className="flex-1">
                     <p className="text-sm text-gray-900 dark:text-white font-medium">
-                      New lead created - John Doe
+                      {activity.action.replace(/_/g, " ")} {activity.user?.name ? `- ${activity.user.name}` : ""}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      2 hours ago
+                      {formatDateTime(activity.createdAt)}
                     </p>
                   </div>
                 </div>
@@ -238,22 +243,25 @@ export default function DashboardPage() {
               Upcoming Followups
             </h3>
             <div className="space-y-4">
-              {[1, 2, 3, 4, 5].map((_, i) => (
-                <div key={i} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50">
+              {stats?.upcomingFollowups?.map((followup) => (
+                <div key={followup.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50">
                   <div className="flex items-center space-x-3">
                     <div className="h-8 w-8 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
                       <Calendar className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                     </div>
                     <div>
                       <p className="text-sm text-gray-900 dark:text-white font-medium">
-                        Followup with Company {i + 1}
+                        Followup with {followup.lead?.companyName || followup.lead?.name || "Unknown"}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Today, 3:00 PM
+                        {formatDateTime(followup.followupDate)}
                       </p>
                     </div>
                   </div>
-                  <button className="px-3 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40">
+                  <button
+                    onClick={() => setSelectedFollowup(followup)}
+                    className="px-3 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40"
+                  >
                     View
                   </button>
                 </div>
@@ -262,6 +270,40 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {selectedFollowup && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md shadow-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Follow-up Details</h3>
+              <button
+                onClick={() => setSelectedFollowup(null)}
+                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="space-y-3 text-sm text-gray-700 dark:text-gray-300">
+              <p><span className="font-medium">Lead:</span> {selectedFollowup.lead?.companyName || selectedFollowup.lead?.name || "Unknown"}</p>
+              <p><span className="font-medium">Phone:</span> {selectedFollowup.lead?.phone || "-"}</p>
+              <p><span className="font-medium">Email:</span> {selectedFollowup.lead?.email || "-"}</p>
+              <p><span className="font-medium">Date:</span> {formatDateTime(selectedFollowup.followupDate)}</p>
+              <p><span className="font-medium">Type:</span> {selectedFollowup.followupType}</p>
+              <p><span className="font-medium">Status:</span> {selectedFollowup.followupStatus}</p>
+              <p><span className="font-medium">Remarks:</span> {selectedFollowup.remarks || "-"}</p>
+              <p><span className="font-medium">Next Follow-up:</span> {selectedFollowup.nextFollowupDate ? formatDateTime(selectedFollowup.nextFollowupDate) : "-"}</p>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setSelectedFollowup(null)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }
