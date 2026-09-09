@@ -19,6 +19,7 @@ import {
   Mail,
   Building2,
   X,
+  Copy,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Lead, PaginatedResponse } from "@/types";
@@ -68,6 +69,7 @@ export default function LeadsPage() {
     tags: "",
     notes: "",
     nextFollowupDate: "",
+    followupRemarks: "",
   });
   const [editData, setEditData] = useState<any>({});
   const [assignToId, setAssignToId] = useState("");
@@ -96,6 +98,8 @@ export default function LeadsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
       setShowModal(false);
+      setShowIndiaMartModal(false);
+      setIndiaMartText("");
       setFormData({
         name: "",
         email: "",
@@ -113,12 +117,17 @@ export default function LeadsPage() {
         tags: "",
         notes: "",
         nextFollowupDate: "",
+        followupRemarks: "",
       });
       alert("Lead created successfully!");
     },
     onError: (error: any) => {
       console.error("Error creating lead:", error);
-      alert(error?.response?.data?.message || "Failed to create lead. Please try again.");
+      alert(
+        error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          "Failed to create lead. Please try again.",
+      );
     },
   });
 
@@ -189,15 +198,54 @@ export default function LeadsPage() {
 
   const bulkImportMutation = useMutation({
     mutationFn: (file: File) => leadService.bulkImportCSV(file),
-    onSuccess: () => {
+    onSuccess: (result: any) => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
       setCsvFile(null);
+      setShowCsvModal(false);
+      alert(`Imported ${result.importedRows} of ${result.totalRows} rows. ${result.duplicateRows} duplicates, ${result.failedRows} failed.`);
+    },
+    onError: (error: any) => {
+      alert(error?.response?.data?.error || error?.response?.data?.message || "CSV import failed. Please try again.");
     },
   });
 
+  function buildLeadPayload(input: Record<string, any>) {
+    const tags = input.tags
+      ? String(input.tags)
+          .split(",")
+          .map((t: string) => t.trim())
+          .filter((t: string) => t.length > 0)
+      : undefined;
+
+    return {
+      name: input.name,
+      phone: input.phone || undefined,
+      alternatePhone: input.alternatePhone || undefined,
+      email: input.email || undefined,
+      companyName: input.companyName || undefined,
+      serviceRequired: input.serviceRequired || undefined,
+      budget: input.budget !== "" && input.budget != null ? Number(input.budget) : undefined,
+      country: input.country || undefined,
+      state: input.state || undefined,
+      city: input.city || undefined,
+      address: input.address || undefined,
+      leadSource: input.leadSource,
+      leadStatus: input.leadStatus,
+      tags,
+      notes: input.notes || undefined,
+      nextFollowupDate: input.nextFollowupDate ? new Date(input.nextFollowupDate).toISOString() : undefined,
+      leadDate: input.leadDate ? new Date(input.leadDate).toISOString() : undefined,
+      followupRemarks: input.followupRemarks || undefined,
+    };
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createMutation.mutate(formData);
+    createMutation.mutate(buildLeadPayload(formData));
+  };
+
+  const handleIndiaMartFormCreate = (data: any) => {
+    createMutation.mutate(buildLeadPayload(data));
   };
 
   const handleView = (lead: Lead) => {
@@ -422,13 +470,27 @@ export default function LeadsPage() {
                           {lead.phone && (
                             <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                               <Phone className="h-4 w-4 mr-2 flex-shrink-0" />
-                              {lead.phone}
+                              <span className="truncate">{lead.phone}</span>
+                              <button
+                                onClick={() => navigator.clipboard.writeText(lead.phone ?? "")}
+                                className="ml-2 p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded opacity-60 hover:opacity-100 transition-opacity"
+                                title="Copy phone"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </button>
                             </div>
                           )}
                           {lead.email && (
                             <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                               <Mail className="h-4 w-4 mr-2 flex-shrink-0" />
-                              {lead.email}
+                              <span className="truncate">{lead.email}</span>
+                              <button
+                                onClick={() => navigator.clipboard.writeText(lead.email ?? "")}
+                                className="ml-2 p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded opacity-60 hover:opacity-100 transition-opacity"
+                                title="Copy email"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </button>
                             </div>
                           )}
                         </div>
@@ -588,6 +650,10 @@ export default function LeadsPage() {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Next Followup Date</label>
                     <input type="datetime-local" value={formData.nextFollowupDate} onChange={(e) => setFormData({ ...formData, nextFollowupDate: e.target.value })} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Follow-up Remarks</label>
+                    <input type="text" value={formData.followupRemarks} onChange={(e) => setFormData({ ...formData, followupRemarks: e.target.value })} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" placeholder="Initial follow-up scheduled" />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Address</label>
@@ -632,6 +698,7 @@ export default function LeadsPage() {
           onUpdate={handleUpdate}
           onAssign={() => selectedLead && assignMutation.mutate({ id: selectedLead.id, assignedToId: assignToId })}
           onIndiaMartImport={handleIndiaMartImport}
+          onIndiaMartFormCreate={handleIndiaMartFormCreate}
           onCSVImport={handleCSVImport}
           onConvert={handleConvert}
           onToggleActive={handleToggleActive}

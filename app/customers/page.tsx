@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customerService } from "@/services/customer.service";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Users, Phone, Mail, Building2, Plus, X } from "lucide-react";
+import { Users, Phone, Mail, Building2, Plus, X, Copy } from "lucide-react";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import type { Customer } from "@/types";
 import { useState } from "react";
@@ -148,13 +148,27 @@ export default function CustomersPage() {
                           {customer.phone && (
                             <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                               <Phone className="h-4 w-4 mr-2 flex-shrink-0" />
-                              {customer.phone}
+                              <span className="truncate">{customer.phone}</span>
+                              <button
+                                onClick={() => navigator.clipboard.writeText(customer.phone ?? "")}
+                                className="ml-2 p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded opacity-60 hover:opacity-100 transition-opacity"
+                                title="Copy phone"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </button>
                             </div>
                           )}
                           {customer.email && (
                             <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                               <Mail className="h-4 w-4 mr-2 flex-shrink-0" />
-                              {customer.email}
+                              <span className="truncate">{customer.email}</span>
+                              <button
+                                onClick={() => navigator.clipboard.writeText(customer.email ?? "")}
+                                className="ml-2 p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded opacity-60 hover:opacity-100 transition-opacity"
+                                title="Copy email"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </button>
                             </div>
                           )}
                         </div>

@@ -2,10 +2,13 @@
 
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function HomePage() {
   const router = useRouter();
-  router.push("/login");
+  useEffect(() => {
+    router.push("/login");
+  }, [router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">

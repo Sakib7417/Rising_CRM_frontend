@@ -141,6 +141,7 @@ export default function LeadModals({
     nextFollowupDate: "",
     leadDate: "",
     tags: "",
+    followupRemarks: "",
   });
   const [showIndiaMartForm, setShowIndiaMartForm] = useState(false);
 
@@ -157,7 +158,7 @@ export default function LeadModals({
     }
     setShowIndiaMartForm(false);
     setIndiaMartText("");
-    setIndiaMartFormData({ name: "", phone: "", alternatePhone: "", email: "", companyName: "", serviceRequired: "", budget: "", leadStatus: "NEW", leadSource: "INDIAMART", city: "", state: "", country: "India", address: "", nextFollowupDate: "", leadDate: "", tags: "" });
+    setIndiaMartFormData({ name: "", phone: "", alternatePhone: "", email: "", companyName: "", serviceRequired: "", budget: "", leadStatus: "NEW", leadSource: "INDIAMART", city: "", state: "", country: "India", address: "", nextFollowupDate: "", leadDate: "", tags: "", followupRemarks: "" });
   };
 
   return (
@@ -579,6 +580,16 @@ export default function LeadModals({
                       value={indiaMartFormData.nextFollowupDate}
                       onChange={(e) => setIndiaMartFormData({ ...indiaMartFormData, nextFollowupDate: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Follow-up Remarks</label>
+                    <input
+                      type="text"
+                      value={indiaMartFormData.followupRemarks}
+                      onChange={(e) => setIndiaMartFormData({ ...indiaMartFormData, followupRemarks: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                      placeholder="Initial follow-up scheduled"
                     />
                   </div>
                   <div>

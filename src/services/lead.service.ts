@@ -83,9 +83,7 @@ export const leadService = {
   bulkImportCSV: async (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
-    const response = await api.post("/leads/bulk-csv", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    const response = await api.post("/leads/bulk-import", formData);
     return response.data.data;
   },
 };
