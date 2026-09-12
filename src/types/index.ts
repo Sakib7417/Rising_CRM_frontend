@@ -65,8 +65,10 @@ export interface Followup {
   lead?: Lead;
   followupDate: string;
   followupType: FollowupType;
+  contactPerson: string | null;
   remarks: string | null;
   nextFollowupDate: string | null;
+  outcome: FollowupOutcome | null;
   followupStatus: FollowupStatus;
   createdById: string;
   createdBy?: User;
@@ -75,6 +77,7 @@ export interface Followup {
 
 export type FollowupStatus = "PENDING" | "COMPLETED" | "NO_RESPONSE" | "INTERESTED" | "CALLBACK" | "CLOSED";
 export type FollowupType = "PHONE_CALL" | "WHATSAPP" | "EMAIL" | "MEETING" | "SITE_VISIT";
+export type FollowupOutcome = "INTERESTED" | "NOT_INTERESTED" | "BUSY" | "CALL_LATER" | "NO_ANSWER" | "QUOTATION_SENT" | "DEMO_SCHEDULED";
 
 export interface Customer {
   id: string;
